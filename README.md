@@ -1,4 +1,4 @@
-# tado_dayplanner
+# tado_day_planner
 
 A self-hosted FastAPI service that applies time-based heating schedules to
 [tado°](https://www.tado.com/) thermostat zones, one "day type" at a time.
@@ -35,7 +35,7 @@ assistant, or a bedside button — and your heating.
 
 ```
 ┌──────────────┐   encrypted     ┌──────────────────┐   OAuth2   ┌──────────┐
-│  Your client │ ──────────────▶ │  tado_dayplanner │ ─────────▶ │  tado°   │
+│  Your client │ ──────────────▶ │  tado_day_planner │ ─────────▶ │  tado°   │
 │ (dashboard,  │   time token    │  (FastAPI +      │            │  API v2  │
 │  NFC, cron…) │                 │   scheduler)     │            │          │
 └──────────────┘                 └──────────────────┘            └──────────┘
@@ -139,8 +139,8 @@ day_types:
 ## Running with Docker Compose
 
 ```bash
-git clone https://github.com/YOUR_USER/tado_dayplanner.git
-cd tado_dayplanner
+git clone https://github.com/YOUR_USER/tado_day_planner.git
+cd tado_day_planner
 
 # edit src/app.py, src/tado.py, src/plans.yaml as described above
 
@@ -231,7 +231,7 @@ import base64, json, os, requests
 from datetime import datetime, timezone
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-SECRET = os.environ["TADO_DAYPLANNER_SECRET"]  # 32 chars
+SECRET = os.environ["tado_day_planner_SECRET"]  # 32 chars
 BASE   = "http://localhost:7171"
 
 def make_token() -> str:
