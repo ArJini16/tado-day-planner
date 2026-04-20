@@ -14,6 +14,38 @@ assistant, or a bedside button — and your heating.
 
 ---
 
+## Table of Contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+- [Requirements](#requirements)
+- [Configuration](#configuration)
+  - [1. `AUTH_SECRET` (in `src/app.py`)](#1-auth_secret-in-srcapppy)
+  - [2. `CLIENT_ID` (in `src/tado.py`)](#2-client_id-in-srctadopy)
+  - [3. `home_id` (in `src/app.py`)](#3-home_id-in-srcapppy)
+  - [4. Zone mapping (in `src/app.py`)](#4-zone-mapping-in-srcapppy)
+- [Defining day types](#defining-day-types)
+- [Running with Docker Compose](#running-with-docker-compose)
+- [API](#api)
+  - [Token format](#token-format)
+  - [Endpoints](#endpoints)
+    - [`POST /next-day/{day_type}?now={bool}`](#post-next-dayday_typenowbool)
+    - [`POST /abort`](#post-abort)
+    - [`POST /status`](#post-status)
+- [Apple Shortcut](#apple-shortcut)
+  - [What it does](#what-it-does)
+  - [Dependencies](#dependencies)
+  - [Setup](#setup)
+  - [Tips](#tips)
+- [Example client (Python)](#example-client-python)
+- [Security notes](#security-notes)
+- [Troubleshooting](#troubleshooting)
+- [Development (without Docker)](#development-without-docker)
+- [License](#license)
+- [Disclaimer](#disclaimer)
+
+---
+
 ## Features
 
 - **YAML-defined day types** — describe each scenario once, reuse daily.
