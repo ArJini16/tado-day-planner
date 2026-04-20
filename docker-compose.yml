@@ -1,0 +1,15 @@
+services:
+  tado-dayplanner:
+    build:
+      context: .
+    image: tado-dayplanner:latest
+    container_name: tado-dayplanner
+
+    ports:
+      - "7171:8080"
+
+    volumes:
+      - ./src/plans.yaml:/app/plans.yaml:ro
+      - ./data:/data
+
+    restart: unless-stopped

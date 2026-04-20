@@ -1,0 +1,137 @@
+day_types:
+  workday:
+    rooms:
+      Schlafzimmer:
+        - time: "00:00"
+          temp: 0
+        - time: "10:00"
+          temp: 16.0
+      Bad:
+        - time: "00:00"
+          temp: 18.0
+        - time: "06:00"
+          temp: 20.0
+        - time: "08:00"
+          temp: 18.0
+      Arbeitszimmer:
+        - time: "00:00"
+          temp: 18.0
+      Küche:
+        - time: "00:00"
+          temp: 18.0
+        - time: "05:30"
+          temp: 20.0
+        - time: "08:00"
+          temp: 18.0
+        - time: "15:00"
+          temp: 20.0
+        - time: "19:00"
+          temp: 18.0
+
+  homeoffice:
+    rooms:
+      Schlafzimmer:
+        - time: "00:00"
+          temp: 0
+        - time: "10:00"
+          temp: 16.0
+      Bad:
+        - time: "00:00"
+          temp: 18.0
+        - time: "08:00"
+          temp: 20.0
+        - time: "11:00"
+          temp: 18.0
+      Arbeitszimmer:
+        - time: "00:00"
+          temp: 18.0
+        - time: "05:30"
+          temp: 24.0
+        - time: "09:30"
+          temp: 20.0
+        - time: "14:00"
+          temp: 22.0
+        - time: "17:00"
+          temp: 18.0
+      Küche:
+        - time: "00:00"
+          temp: 18.0
+        - time: "05:30"
+          temp: 20.0
+        - time: "08:00"
+          temp: 18.0
+        - time: "15:00"
+          temp: 20.0
+        - time: "19:00"
+          temp: 18.0
+
+  away_after_morning:
+    rooms:
+      Schlafzimmer:
+        - time: "00:00"
+          temp: 0
+        - time: "10:00"
+          temp: 16.0
+      Bad:
+        - time: "00:00"
+          temp: 18.0
+        - time: "06:00"
+          temp: 20.0
+        - time: "08:00"
+          temp: 16.0
+      Arbeitszimmer:
+        - time: "00:00"
+          temp: 16.0
+      Küche:
+        - time: "00:00"
+          temp: 18.0
+        - time: "05:30"
+          temp: 20.0
+        - time: "08:00"
+          temp: 16.0
+
+  away:
+    rooms:
+      Schlafzimmer:
+        - time: "00:00"
+          temp: 16.0
+      Bad:
+        - time: "00:00"
+          temp: 16.0
+      Arbeitszimmer:
+        - time: "00:00"
+          temp: 16.0
+      Küche:
+        - time: "00:00"
+          temp: 16.0
+
+  free:
+    rooms:
+      Schlafzimmer:
+        - time: "00:00"
+          temp: 0
+        - time: "12:00"
+          temp: 16.0
+      Bad:
+        - time: "00:00"
+          temp: 18.0
+        - time: "11:00"
+          temp: 20.0
+        - time: "15:00"
+          temp: 18.0
+      Arbeitszimmer:
+        - time: "00:00"
+          temp: 18.0
+        - time: "11:00"
+          temp: 20.0
+      Küche:
+        - time: "00:00"
+          temp: 18.0
+        - time: "10:00"
+          temp: 20.0
+        - time: "14:00"
+          temp: 18.0
+        - time: "18:00"
+          temp: 20.0
+        - time: "21:00"
+          temp: 18.0
