@@ -224,6 +224,57 @@ or simply:
 
 ---
 
+## Apple Shortcut
+A ready-made iOS/macOS Shortcut (`tado_day_planner.shortcut`) is included in
+the repository. It handles token generation and the API call entirely on-device
+— no separate client script needed.
+
+### What it does
+1. **Reads the current date/time** and formats it as `yyyy.MM.dd-HH:mm:ssZ`.
+2. **Encrypts** the timestamp string with your `AUTH_SECRET` (AES-256-GCM) to
+  produce the request token.
+3. **Shows a menu** so you pick the day type for tomorrow:
+  | Menu label              | API path segment      |
+  |-------------------------|-----------------------|
+  | Office                  | `workday`             |
+  | Homeoffice              | `homeoffice`          |
+  | Frei                    | `free`                |
+  | Abwesend                | `away`                |
+  | Abwesend nach Aufstehen | `away_after_morning`  |
+4. **Calls `POST /next-day/<path>`** on your server with the encrypted token in
+  the JSON body. If no menu item was chosen (cancelled), the request is
+  skipped.
+
+### Dependencies
+The **Encrypt** action used in the Shortcut is provided by a third-party
+Shortcuts extension (the purple gear icon). Make sure the app that supplies
+this action is installed before importing the Shortcut.
+
+### Setup
+1. Open `tado_day_planner.shortcut` on your iPhone/Mac — Shortcuts will import
+  it automatically.
+2. Tap the **Encrypt** step and enter your `AUTH_SECRET` (the same 32-character
+  string configured in `src/app.py`) as the key.
+3. Tap the **"Inhalte von URL abrufen"** step and replace the placeholder host
+  with your server address, e.g. `https://tado.example.com/next-day/<Path>`.
+  Make sure the `Method` is set to **POST** and the request body passes
+  `{"token": <Token>}` as JSON.
+4. Run the Shortcut once with a test day type to verify connectivity.
+   
+### Tips
+- Add the Shortcut to your **Home Screen** or a **Focus Filter** for one-tap
+ scheduling every evening.
+- On a HomePod or via Siri: *"Hey Siri, Tado Day Planner"* opens the menu
+ hands-free.
+- Pair it with an **NFC tag** on your nightstand: tap the tag → the menu
+ appears → done.
+- Trigger it automatically via **Shortcuts Automations**: set the automation
+ to fire when the **Clock app is closed** — the menu appears right after
+ you've set your alarms for the next day, so heating and wake-up time are
+ always planned together.
+
+---
+
 ## Example client (Python)
 
 ```python
