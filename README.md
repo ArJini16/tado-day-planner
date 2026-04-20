@@ -1,126 +1,123 @@
-# tado_day_planner
+<div align="center">
 
-A self-hosted FastAPI service that applies time-based heating schedules to
-[tado°](https://www.tado.com/) thermostat zones, one "day type" at a time.
+# 🌡️ tado_day_planner
 
-You define **day types** (e.g. `workday`, `homeoffice`, `away`, `free`) in a
-YAML file — each one a list of per-room, per-time temperatures — and trigger
-the one you want for the next day via an authenticated HTTP call. The service
-then walks through the timeline and sets manual overlays on the correct
-tado° zones at the correct times.
+**Time-based heating schedules for your tado° thermostats — one "day type" per day, triggered at the push of a button.**
 
-Ideal glue layer between a home automation dashboard, a NFC tag, a voice
-assistant, or a bedside button — and your heating.
+[![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![License: AGPL v3+](https://img.shields.io/badge/License-AGPL%20v3%2B-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Platform: tado°](https://img.shields.io/badge/Platform-tado°-FF6900)](https://www.tado.com/)
+
+</div>
 
 ---
 
-## Table of Contents
+A self-hosted **FastAPI** service that applies time-based heating schedules to [tado°](https://www.tado.com/) thermostat zones, one *day type* at a time.
 
-- [Features](#features)
-- [Architecture](#architecture)
-- [Requirements](#requirements)
-- [Configuration](#configuration)
-  - [1. `AUTH_SECRET` (in `src/app.py`)](#1-auth_secret-in-srcapppy)
-  - [2. `CLIENT_ID` (in `src/tado.py`)](#2-client_id-in-srctadopy)
-  - [3. `home_id` (in `src/app.py`)](#3-home_id-in-srcapppy)
-  - [4. Zone mapping (in `src/app.py`)](#4-zone-mapping-in-srcapppy)
-- [Defining day types](#defining-day-types)
-- [Running with Docker Compose](#running-with-docker-compose)
-- [API](#api)
+You define **day types** (e.g. `workday`, `homeoffice`, `away`, `free`) in a YAML file — each one a list of per-room, per-time temperatures — and trigger the one you want for the next day via an authenticated HTTP call. The service walks through the timeline and sets manual overlays on the correct tado° zones at the correct times.
+
+> 💡 Ideal glue layer between a home automation dashboard, an NFC tag, a voice assistant, or a bedside button — and your heating.
+
+---
+
+## 📑 Table of Contents
+
+- [✨ Features](#-features)
+- [🏗️ Architecture](#️-architecture)
+- [📋 Requirements](#-requirements)
+- [⚙️ Configuration](#️-configuration)
+  - [1. `AUTH_SECRET`](#1-auth_secret-in-srcapppy)
+  - [2. `CLIENT_ID`](#2-client_id-in-srctadopy)
+  - [3. `home_id`](#3-home_id-in-srcapppy)
+  - [4. Zone mapping](#4-zone-mapping-in-srcapppy)
+- [📝 Defining day types](#-defining-day-types)
+- [🚀 Running with Docker Compose](#-running-with-docker-compose)
+- [🔌 API](#-api)
   - [Token format](#token-format)
   - [Endpoints](#endpoints)
-    - [`POST /next-day/{day_type}?now={bool}`](#post-next-dayday_typenowbool)
-    - [`POST /abort`](#post-abort)
-    - [`POST /status`](#post-status)
-- [Apple Shortcut](#apple-shortcut)
-  - [What it does](#what-it-does)
-  - [Dependencies](#dependencies)
-  - [Setup](#setup)
-  - [Tips](#tips)
-- [Example client (Python)](#example-client-python)
-- [Security notes](#security-notes)
-- [Troubleshooting](#troubleshooting)
-- [Development (without Docker)](#development-without-docker)
-- [License](#license)
-- [Disclaimer](#disclaimer)
+- [📱 Apple Shortcut](#-apple-shortcut)
+- [🐍 Example client (Python)](#-example-client-python)
+- [🔒 Security notes](#-security-notes)
+- [🛠️ Troubleshooting](#️-troubleshooting)
+- [💻 Development (without Docker)](#-development-without-docker)
+- [📜 License](#-license)
+- [⚠️ Disclaimer](#️-disclaimer)
 
 ---
 
-## Features
+## ✨ Features
 
-- **YAML-defined day types** — describe each scenario once, reuse daily.
-- **Per-room, per-time temperatures** — including frost protection (`temp: 0`).
-- **Smart target date** — scheduling after 05:00 plans for *tomorrow*; before
-  05:00 it plans for *today* (so a late-night trigger still works).
-- **`now=true` mode** — apply all events immediately instead of waiting
-  (useful for testing or "I changed my mind" scenarios).
-- **Single active plan** — starting a new plan cleanly aborts the running one.
-- **tado° OAuth2 device flow** — one-time browser confirmation on first start,
-  automatic refresh afterwards. Tokens persisted to disk.
-- **AES-256-GCM authenticated endpoints** — short-lived (10 s) encrypted
-  timestamp tokens, no username/password, no bearer token on the wire.
-- **Dockerized** — single container, single volume for tokens.
+| | |
+|---|---|
+| 🗓️ **YAML-defined day types** | Describe each scenario once, reuse daily. |
+| 🏠 **Per-room, per-time temperatures** | Including frost protection (`temp: 0`). |
+| 🧠 **Smart target date** | After 05:00 plans for *tomorrow*; before 05:00 plans for *today*. |
+| ⚡ **`now=true` mode** | Apply all events immediately — useful for testing or changes of mind. |
+| 🔄 **Single active plan** | Starting a new plan cleanly aborts the running one. |
+| 🔐 **tado° OAuth2 device flow** | One-time browser confirmation, auto-refresh, tokens persisted to disk. |
+| 🛡️ **AES-256-GCM auth** | Short-lived (10 s) encrypted timestamp tokens — no passwords on the wire. |
+| 🐳 **Dockerized** | Single container, single volume for tokens. |
 
 ---
 
-## Architecture
+## 🏗️ Architecture
 
 ```
-┌──────────────┐   encrypted     ┌──────────────────┐   OAuth2   ┌──────────┐
+┌──────────────┐   encrypted     ┌───────────────────┐   OAuth2   ┌──────────┐
 │  Your client │ ──────────────▶ │  tado_day_planner │ ─────────▶ │  tado°   │
-│ (dashboard,  │   time token    │  (FastAPI +      │            │  API v2  │
-│  NFC, cron…) │                 │   scheduler)     │            │          │
-└──────────────┘                 └──────────────────┘            └──────────┘
-                                         │
-                                         ▼
-                                   plans.yaml
-                                   data/tokens.json
+│ (dashboard,  │   time token    │  (FastAPI +       │            │  API v2  │
+│  NFC, cron…) │                 │   scheduler)      │            │          │
+└──────────────┘                 └───────────────────┘            └──────────┘
+                                          │
+                                          ▼
+                                    plans.yaml
+                                    data/tokens.json
 ```
 
-- `app.py` — FastAPI app, auth middleware, endpoint routing
-- `planner.py` — background thread that walks through the timeline
-- `tado.py` — tado° API client (OAuth2 device flow + overlay calls)
-- `plans.yaml` — your day types
+| File | Purpose |
+|------|---------|
+| `app.py` | FastAPI app, auth middleware, endpoint routing |
+| `planner.py` | Background thread that walks through the timeline |
+| `tado.py` | tado° API client (OAuth2 device flow + overlay calls) |
+| `plans.yaml` | Your day types |
 
 ---
 
-## Requirements
+## 📋 Requirements
 
-- A tado° account with at least one heating zone
-- Your tado° **home ID** (visible in the tado° web app URL or via the API)
-- Docker + Docker Compose (recommended), or Python 3.12 directly
-- A tado° OAuth2 **client ID** — the official one is currently distributed by
-  tado° support; fill it into `src/tado.py`
+-  A tado° account with at least one heating zone
+-  Your tado° **home ID** (visible in the tado° web app URL or via the API)
+-  **Docker + Docker Compose** (recommended), or Python 3.12 directly
+-  A tado° OAuth2 **client ID** — the official one is currently distributed by tado° support; fill it into `src/tado.py`
 
 ---
 
-## Configuration
+## ⚙️ Configuration
 
-Before first run you need to configure four things.
+Before the first run you need to configure **four things**.
 
 ### 1. `AUTH_SECRET` (in `src/app.py`)
 
-A **32-character ASCII string** used as the AES-256 key for endpoint
-authentication. Generate one, for example:
+A **32-character ASCII string** used as the AES-256 key for endpoint authentication. Generate one:
 
 ```bash
 python -c "import secrets, string; print(''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(32)))"
 ```
 
-> ⚠️ **Do not commit your real secret.** For production use, move
-> `AUTH_SECRET` into an environment variable and read it via `os.environ`.
+> ⚠️ **Do not commit your real secret.** For production, move `AUTH_SECRET` into an environment variable and read it via `os.environ`.
 
 ### 2. `CLIENT_ID` (in `src/tado.py`)
 
-The OAuth2 client ID for the tado° device flow. See the tado° developer /
-support resources for the current value.
+The OAuth2 client ID for the tado° device flow. See the tado° developer / support resources for the current value.
 
 ### 3. `home_id` (in `src/app.py`)
 
-Change the literal in:
+Change the literal:
 
 ```python
-tado = TadoClient(1496844)   # <-- replace with your home ID
+tado = TadoClient(1496844)   # 👈 replace with your home ID
 ```
 
 ### 4. Zone mapping (in `src/app.py`)
@@ -136,14 +133,13 @@ ZONES = {
 }
 ```
 
-The keys here must match the room names used in `plans.yaml`.
+> 📝 The keys here **must match** the room names used in `plans.yaml`.
 
 ---
 
-## Defining day types
+## 📝 Defining day types
 
-`src/plans.yaml` holds all day types. Each one lists rooms, and each room
-lists `time` → `temp` transitions for that day.
+`src/plans.yaml` holds all day types. Each one lists rooms, and each room lists `time` → `temp` transitions for that day.
 
 ```yaml
 day_types:
@@ -161,14 +157,16 @@ day_types:
 
 **Rules:**
 
-- `time` is `HH:MM` in `Europe/Berlin` (hard-coded in `planner.py`).
-- `temp: 0` triggers frost protection (heating OFF with manual overlay).
-- Every other value is set as a manual temperature overlay in °C.
-- Events are sorted globally by time and applied in order.
+| Field | Meaning |
+|-------|---------|
+| `time` | `HH:MM` in `Europe/Berlin` (hard-coded in `planner.py`). |
+| `temp: 0` | Frost protection (heating OFF with manual overlay). |
+| `temp: <n>` | Manual temperature overlay in °C. |
+| *Order* | Events are sorted globally by time and applied in order. |
 
 ---
 
-## Running with Docker Compose
+## 🚀 Running with Docker Compose
 
 ```bash
 git clone https://github.com/YOUR_USER/tado_day_planner.git
@@ -180,19 +178,15 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-On first start, the container logs will print a tado° authorization URL and a
-user code — open it in a browser and approve. Tokens are then written to
-`./data/tokens.json` and reused across restarts.
+On first start, the container logs will print a tado° **authorization URL** and a **user code** — open it in a browser and approve. Tokens are then written to `./data/tokens.json` and reused across restarts.
 
-The service listens on **http://localhost:7171** by default (see
-`docker-compose.yml` to change the host port).
+> 🌐 The service listens on **http://localhost:7171** by default (see `docker-compose.yml` to change the host port).
 
 ---
 
-## API
+## 🔌 API
 
-All endpoints are `POST` only and require an encrypted time token in the JSON
-body:
+All endpoints are `POST` only and require an encrypted time token in the JSON body:
 
 ```json
 { "token": "<base64 AES-256-GCM ciphertext>" }
@@ -200,26 +194,20 @@ body:
 
 ### Token format
 
-The token is built as:
+The token is built as follows:
 
-1. Take the current time as `yyyy.MM.dd-HH:mm:ssZ`
-   (e.g. `2026.04.20-18:30:00+0200`).
-2. AES-256-GCM encrypt the UTF-8 bytes of that string using `AUTH_SECRET`
-   as the key, with a random 12-byte IV.
+1. Take the current time as `yyyy.MM.dd-HH:mm:ssZ` (e.g. `2026.04.20-18:30:00+0200`).
+2. AES-256-GCM encrypt the UTF-8 bytes of that string using `AUTH_SECRET` as the key, with a random **12-byte IV**.
 3. Concatenate `IV || ciphertext || tag` → base64 encode.
-4. Send as the `token` field of the JSON body.
+4. Send it as the `token` field of the JSON body.
 
-The server decrypts, parses the timestamp, and rejects anything older than
-**10 seconds** or in the future. This means every request needs a fresh
-token — replay attacks have a 10-second window at most.
+The server decrypts, parses the timestamp, and rejects anything older than **10 seconds** or in the future. This means every request needs a fresh token — replay attacks have a 10-second window at most.
 
 ### Endpoints
 
-#### `POST /next-day/{day_type}?now={bool}`
+#### 📅 `POST /next-day/{day_type}?now={bool}`
 
-Schedule a day type. By default it plans for the *next* day (or today if it's
-before 05:00). With `?now=true`, all events are applied **immediately** in
-sequence, without waiting.
+Schedule a day type. By default it plans for the *next* day (or today if it's before 05:00). With `?now=true`, all events are applied **immediately** in sequence.
 
 ```bash
 curl -X POST "http://localhost:7171/next-day/homeoffice" \
@@ -227,20 +215,18 @@ curl -X POST "http://localhost:7171/next-day/homeoffice" \
      -d '{"token":"<...>"}'
 ```
 
-Response:
-
+**Response:**
 ```json
 { "status": "scheduled", "day_type": "homeoffice", "now": false }
 ```
 
-Starting a new plan while one is running cleanly aborts the previous one.
+> 🔄 Starting a new plan while one is running cleanly aborts the previous one.
 
-#### `POST /abort`
+#### ⏹️ `POST /abort`
 
-Cancel the currently running plan. Already-applied overlays stay in place —
-this only stops future events.
+Cancel the currently running plan. Already-applied overlays stay in place — this only stops future events.
 
-#### `POST /status`
+#### 📊 `POST /status`
 
 Returns whether a plan is currently active:
 
@@ -256,61 +242,50 @@ or simply:
 
 ---
 
-## Apple Shortcut
-A ready-made iOS/macOS Shortcut (`tado_day_planner.shortcut`) is included in
-the repository. It handles token generation and the API call entirely on-device
-— no separate client script needed.
+## 📱 Apple Shortcut
+
+A ready-made iOS/macOS Shortcut (`tado_day_planner.shortcut`) is included in the repository. It handles token generation and the API call **entirely on-device** — no separate client script needed.
 
 ### What it does
-1. **Reads the current date/time** and formats it as `yyyy.MM.dd-HH:mm:ssZ`.
-2. **Encrypts** the timestamp string with your `AUTH_SECRET` (AES-256-GCM) to
-  produce the request token.
-3. **Shows a menu** so you pick the day type for tomorrow:
-  | Menu label              | API path segment      |
-  |-------------------------|-----------------------|
-  | Office                  | `workday`             |
-  | Homeoffice              | `homeoffice`          |
-  | Frei                    | `free`                |
-  | Abwesend                | `away`                |
-  | Abwesend nach Aufstehen | `away_after_morning`  |
-4. **Calls `POST /next-day/<path>`** on your server with the encrypted token in
-  the JSON body. If no menu item was chosen (cancelled), the request is
-  skipped.
+
+1. 🕐 **Reads the current date/time** and formats it as `yyyy.MM.dd-HH:mm:ssZ`.
+2. 🔐 **Encrypts** the timestamp string with your `AUTH_SECRET` (AES-256-GCM) to produce the request token.
+3. 📋 **Shows a menu** so you can pick the day type for tomorrow:
+
+   | Menu label              | API path segment      |
+   |-------------------------|-----------------------|
+   | Office                  | `workday`             |
+   | Homeoffice              | `homeoffice`          |
+   | Frei                    | `free`                |
+   | Abwesend                | `away`                |
+   | Abwesend nach Aufstehen | `away_after_morning`  |
+
+4. 📤 **Calls `POST /next-day/<path>`** on your server with the encrypted token in the JSON body. If no menu item is chosen (cancelled), the request is skipped.
 
 ### Dependencies
-The **Encrypt** action used in the Shortcut is provided by a third-party
-Shortcuts extension (the purple gear icon). Make sure the app that supplies
-this action is installed before importing the Shortcut.
+
+The **Encrypt** action used in the Shortcut is provided by a third-party Shortcuts extension (the purple gear icon). Make sure the app that supplies this action is installed before importing the Shortcut.
 
 ### Setup
-1. Open `tado_day_planner.shortcut` on your iPhone/Mac — Shortcuts will import
-  it automatically.
-2. Tap the **Encrypt** step and enter your `AUTH_SECRET` (the same 32-character
-  string configured in `src/app.py`) as the key.
-3. Tap the **"Inhalte von URL abrufen"** step and replace the placeholder host
-  with your server address, e.g. `https://tado.example.com/next-day/<Path>`.
-  Make sure the `Method` is set to **POST** and the request body passes
-  `{"token": <Token>}` as JSON.
+
+1. Open `tado_day_planner.shortcut` on your iPhone/Mac — Shortcuts will import it automatically.
+2. Tap the **Encrypt** step and enter your `AUTH_SECRET` (the same 32-character string configured in `src/app.py`) as the key.
+3. Tap the **"Inhalte von URL abrufen"** step and replace the placeholder host with your server address, e.g. `https://tado.example.com/next-day/<Path>`. Make sure the `Method` is set to **POST** and the request body passes `{"token": <Token>}` as JSON.
 4. Run the Shortcut once with a test day type to verify connectivity.
-   
-### Tips
-- Add the Shortcut to your **Home Screen** or a **Focus Filter** for one-tap
- scheduling every evening.
-- On a HomePod or via Siri: *"Hey Siri, Tado Day Planner"* opens the menu
- hands-free.
-- Pair it with an **NFC tag** on your nightstand: tap the tag → the menu
- appears → done.
-- Trigger it automatically via **Shortcuts Automations**: set the automation
- to fire when the **Clock app is closed** — the menu appears right after
- you've set your alarms for the next day, so heating and wake-up time are
- always planned together.
+
+### 💡 Tips
+
+- 🏠 Add the Shortcut to your **Home Screen** or a **Focus Filter** for one-tap scheduling every evening.
+- 🗣️ On a HomePod or via Siri: *"Hey Siri, Tado Day Planner"* opens the menu hands-free.
+- 📲 Pair it with an **NFC tag** on your nightstand: tap the tag → the menu appears → done.
+- ⏰ Trigger it automatically via **Shortcuts Automations**: set the automation to fire when the **Clock app is closed** — the menu appears right after you've set your alarms for the next day, so heating and wake-up time are always planned together.
 
 ---
 
-## Example client (Python)
+## 🐍 Example client (Python)
 
 ```python
-import base64, json, os, requests
+import base64, os, requests
 from datetime import datetime, timezone
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -335,39 +310,45 @@ print(r.status_code, r.json())
 
 ---
 
-## Security notes
+## 🔒 Security notes
 
-- The service is designed to sit on a **trusted network** (LAN / VPN / reverse
-  proxy). The auth scheme prevents replay and trivial tampering, but there is
-  no user management, rate limiting, or TLS built in. Put it behind a reverse
-  proxy (Caddy, nginx, Traefik) if you expose it beyond localhost.
-- `AUTH_SECRET` and `CLIENT_ID` should not be committed — move them to
-  environment variables for real deployments.
-- `data/tokens.json` contains your tado° refresh token. Treat it like a
-  password.
+> ⚠️ The service is designed to sit on a **trusted network** (LAN / VPN / reverse proxy).
+
+- The auth scheme prevents replay and trivial tampering, but there is **no user management, no rate limiting, and no TLS** built in. Put it behind a reverse proxy (Caddy, nginx, Traefik) if you expose it beyond localhost.
+- `AUTH_SECRET` and `CLIENT_ID` should **not be committed** — move them to environment variables for real deployments.
+- `data/tokens.json` contains your tado° refresh token. **Treat it like a password.**
 
 ---
 
-## Troubleshooting
+## 🛠️ Troubleshooting
 
-**"No tokens at startup → device flow required"**
+<details>
+<summary><strong>"No tokens at startup → device flow required"</strong></summary>
+
 First-run message. Open the URL from the logs and confirm in your browser.
+</details>
 
-**`Token expired` / `Token time is in the future`**
-Your client's clock drifts more than 10 seconds from the server's. Sync both
-via NTP, or widen `MAX_AGE_SECONDS` in `app.py`.
+<details>
+<summary><strong><code>Token expired</code> / <code>Token time is in the future</code></strong></summary>
 
-**`AUTH_SECRET muss GENAU 32 Zeichen haben`**
-The secret must be exactly 32 ASCII characters (= 32 bytes for AES-256).
+Your client's clock is drifting by more than 10 seconds from the server's. Sync both via NTP, or widen `MAX_AGE_SECONDS` in `app.py`.
+</details>
 
-**Zones not heating**
-Check `ZONES` in `app.py` — the numeric IDs must match the actual zone IDs in
-your tado° home. Verify with `GET /api/v2/homes/{home_id}/zones` against the
-tado° API.
+<details>
+<summary><strong><code>AUTH_SECRET muss GENAU 32 Zeichen haben</code></strong></summary>
+
+The secret must be **exactly 32 ASCII characters** (= 32 bytes for AES-256).
+</details>
+
+<details>
+<summary><strong>Zones not heating</strong></summary>
+
+Check `ZONES` in `app.py` — the numeric IDs must match the actual zone IDs in your tado° home. Verify with `GET /api/v2/homes/{home_id}/zones` against the tado° API.
+</details>
 
 ---
 
-## Development (without Docker)
+## 💻 Development (without Docker)
 
 ```bash
 cd src
@@ -375,7 +356,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
 # token file expected at /data/tokens.json by default — override via symlink
-# or run as root in a container. For local dev, simplest is to adjust
+# or run as root in a container. For local dev, the simplest approach is to adjust
 # TOKEN_FILE in tado.py.
 
 uvicorn app:app --host 0.0.0.0 --port 8080 --reload
@@ -383,23 +364,18 @@ uvicorn app:app --host 0.0.0.0 --port 8080 --reload
 
 ---
 
-## License
+## 📜 License
 
-This project is licensed under the **GNU Affero General Public License v3.0
-or later (AGPL-3.0-or-later)**.
+This project is licensed under the **GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)**.
 
-In short: you may use, modify, and redistribute this software freely, **but
-any modified version you distribute or run as a network service must also be
-released under the AGPL** and its source code made available to its users.
-See the [LICENSE](./LICENSE) file for the full text, or
-<https://www.gnu.org/licenses/agpl-3.0.html>.
+> In short: you may use, modify, and redistribute this software freely, **but any modified version you distribute or run as a network service must also be released under the AGPL** and its source code made available to its users.
+
+See the [LICENSE](./LICENSE) file for the full text, or <https://www.gnu.org/licenses/agpl-3.0.html>.
 
 ---
 
-## Disclaimer
+## ⚠️ Disclaimer
 
-This project controls physical heating equipment via an unofficial use of the
-tado° API. It is not affiliated with, endorsed by, or supported by tado° GmbH.
-Use at your own risk — misconfigured schedules may lead to uncomfortable
-temperatures, frozen pipes, or unnecessary energy consumption. Always test
-new day types with `now=true` before relying on them overnight.
+This project controls physical heating equipment via an **unofficial use** of the tado° API. It is **not affiliated with, endorsed by, or supported by tado° GmbH**.
+
+Use at your own risk — misconfigured schedules may lead to uncomfortable temperatures, frozen pipes, or unnecessary energy consumption. **Always test new day types with `now=true` before relying on them overnight.**
